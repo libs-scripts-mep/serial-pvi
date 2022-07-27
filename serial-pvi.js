@@ -40,6 +40,13 @@ class SerialPVI {
       return DAQ.runInstructionS("serial.sendbyte", [porta, DataSend])
    }
 
+   /**
+    * @returns array de portas COM encontradas pelo PVI
+    */
+   getPortList() {
+      return DAQ.runInstructionS("serial.getportscsv", []).split(";")
+   }
+
    //#region Métodos Estáticos
 
    //#region Estruturas Auxiliares
@@ -147,13 +154,6 @@ class SerialPVI {
    }
 
    //#endregion Estruturas Auxiliares
-
-   /**
-    * @returns array de portas COM encontradas pelo PVI
-    */
-   static getPortList() {
-      return DAQ.runInstructionS("serial.getportscsv", []).split(";")
-   }
 
    /**
     * Varre todas as portas COM encontradas pelo PVI, e as fecha.
