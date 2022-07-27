@@ -90,7 +90,7 @@ class SerialPVI {
     * @param {function} callback 
     * @param {number} timeOut 
     */
-   static getConnectedPortCom = (dataSend, regex, callback, timeOut = 1000) => {
+   getConnectedPortCom = (dataSend, regex, callback, timeOut = 1000) => {
 
       var portList = this.getPortList()
       let indexPort = 0
