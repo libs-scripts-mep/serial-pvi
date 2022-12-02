@@ -153,6 +153,42 @@ class SerialPVI {
       }, timeOut)
    }
 
+   /** 
+    * @param {string} request requisição a ser enviada
+    * @param {RegExp} regex expressão regular para validar a resposta
+    * @param {function} callback
+    * @param {number} timeOut
+    * @param {number} interval intervalo entre as requisições
+   */
+
+   MatchData = (request, regex, callback, timeOut=3000, interval=300, timeOutReadData=100 ) => {
+      let Response
+      let Result
+
+      let IntervaloRequisicoes = setInterval(() => {
+
+         this.SendData(request)
+
+         setTimeout(() => {            
+            Response = this.ReadData(this.COMPORT, false)
+            Result = Response.match(regex)
+            console.log(`%cPVI <= ${Result}`, 'color: #FF9900')
+   
+            if (Result) {
+               clearTimeout(TimeOutRequisicoes)
+               clearInterval(IntervaloRequisicoes)
+               callback(true, Response)
+            }
+         }, timeOutReadData)
+
+      }, interval)
+
+      let TimeOutRequisicoes = setTimeout(() => {
+         clearInterval(IntervaloRequisicoes)
+         callback(false)
+      }, timeOut)
+   }
+
    //#endregion Estruturas Auxiliares
 
    /**
