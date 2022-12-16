@@ -172,7 +172,12 @@ class SerialPVI {
          setTimeout(() => {            
             Response = this.ReadData(this.COMPORT, false)
             Result = Response.match(regex)
-            console.log(`%cPVI <= ${Result}`, 'color: #FF9900')
+
+            try{
+               console.log(`%cPVI <= ${Result[0]}`, 'color: #FF9900')
+            }catch{
+               console.log(`%cPVI <= null`, 'color: #FF9900')
+            }
    
             if (Result) {
                clearTimeout(TimeOutRequisicoes)
