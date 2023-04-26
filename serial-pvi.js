@@ -37,57 +37,7 @@ class SerialPVI {
       if (log) {
          console.log(`%cPVI => ${DataSend}`, 'color: #00CCCC')
       }
-      return DAQ.runInstructionS("serial.sendbyte", [porta, DataSend])
-   }
-
-   /**
-    * @returns array de portas COM encontradas pelo PVI
-    */
-   getPortList() {
-      return DAQ.runInstructionS("serial.getportscsv", []).split(";")
-   }
-
-   //#region Métodos Estáticos
-
-   //#region Estruturas Auxiliares
-
-   /**
-    * @param {Array} ByteArray 
-    * @param {RegExp} regex Expressão regular para validar o formato (outra série de bytes)
-    * @param {CRC} CRC Classe CRC desejada (CRC8, CRC16 etc...)
-    * @param {Boolean} inv Inversão dos bytes do CRC
-    * @returns string de requisição
-   */
-   byteArrayToStringReq(ByteArray, regex = null, CRC = null, inv = false) {
-
-      let stringReq = ""
-      let bufferString = ""
-
-      ByteArray.forEach((byte, key, array) => {
-
-         bufferString += byte
-
-         if (key < array.length - 1) {
-            bufferString += " "
-         }
-      })
-
-      if (CRC != null) {
-         let crc = CRC.Calculate(ByteArray, inv)
-         bufferString += " " + crc
-      }
-
-      if (regex != null) {
-         if (bufferString.match(regex)) {
-            stringReq = bufferString
-         } else {
-            console.error("Formato da requisição inválido!")
-         }
-      } else {
-         stringReq = bufferString
-      }
-
-      return (stringReq)
+      return DAQ.runInstructionS("serial.sendbyte", [porta, DataSend]) == 1
    }
 
    /**
@@ -97,38 +47,32 @@ class SerialPVI {
     * @param {function} callback 
     * @param {number} timeOut 
     */
-   getConnectedPortCom = (dataSend, regex, callback, timeOut = 1000) => {
+   getConnectedPortCom(dataSend, regex, callback, timeOut = 1000) {
 
-      var portList = this.getPortList()
+      var portList = SerialPVI.getPortList()
       let indexPort = 0
 
       let getPort = setInterval(() => {
-
          if (indexPort < portList.length) {
 
             var portaAtual = portList[indexPort]
 
             if (this.open(portaAtual, this.BAUD, this.PARIDADE) == 1) {
-
                if (this.SendData(dataSend, portaAtual) == 1) {
 
                   setTimeout(() => {
-
                      var byteData = this.ReadData(portaAtual).match(regex)
 
                      if (byteData) {
-
                         console.log(`%c${portaAtual} Match: ${byteData}`, `color: #00EE66`)
                         this.setPortCom(portaAtual)
                         clearInterval(getPort)
                         callback(true, this.getComPort())
 
                      } else {
-
                         console.log(`%c${portaAtual} Unmatch: ${byteData}`, `color: #EE0066`)
                         this.close(portaAtual)
                         indexPort++
-
                      }
                   }, timeOut * 0.5)
 
@@ -153,54 +97,58 @@ class SerialPVI {
       }, timeOut)
    }
 
-   /** 
-    * @param {string} request requisição a ser enviada
-    * @param {RegExp} regex expressão regular para validar a resposta
-    * @param {function} callback
-    * @param {number} timeOut
-    * @param {number} interval intervalo entre as requisições
-   */
+   /**
+    * 
+    * @param {string} request string a ser enviada pelo PVI
+    * @param {RegExp} regex utilizado para validar a estrutura da resposta aguardada
+    * @param {function} callback 
+    * @param {number} timeOut tempo maximo que aguarda uma resposta, caso exceda, retorna falha
+    * @param {number} interval intervalo entre uma tentativa e outra
+    * @param {number} timeOutReadData tempo que aguarda antes de ler a resposta no buffer do PVI
+    */
+   MatchData(request, regex, callback, timeOut, interval, timeOutReadData) {
 
-   MatchData = (request, regex, callback, timeOut=3000, interval=300, timeOutReadData=100 ) => {
-      let Response
-      let Result
+      let response = null
+      let match = null
 
-      let IntervaloRequisicoes = setInterval(() => {
+      if (timeOutReadData * 2 <= interval) {
 
-         this.SendData(request)
+         let reqInterval = setInterval(() => {
 
-         setTimeout(() => {            
-            Response = this.ReadData(this.COMPORT, false)
-            Result = Response.match(regex)
+            this.SendData(request)
 
-            try{
-               console.log(`%cPVI <= ${Result[0]}`, 'color: #FF9900')
-            }catch{
-               console.log(`%cPVI <= null`, 'color: #FF9900')
-            }
-   
-            if (Result) {
-               clearTimeout(TimeOutRequisicoes)
-               clearInterval(IntervaloRequisicoes)
-               callback(true, Response)
-            }
-         }, timeOutReadData)
+            setTimeout(() => {
+               response = this.ReadData(this.COMPORT)
+               match = response.match(regex)
 
-      }, interval)
+               if (match) {
+                  clearTimeout(timeOutReq)
+                  clearInterval(reqInterval)
+                  callback(true, match)
+               }
+            }, timeOutReadData)
 
-      let TimeOutRequisicoes = setTimeout(() => {
-         clearInterval(IntervaloRequisicoes)
-         callback(false)
-      }, timeOut)
+         }, interval)
+
+         let timeOutReq = setTimeout(() => {
+            clearInterval(reqInterval)
+            callback(false, null)
+         }, timeOut)
+
+      } else {
+         callback(false, "Timeout de leitura invalido! Precisa ser no minimo duas vezes menor do que o 'interval'")
+      }
    }
 
-   //#endregion Estruturas Auxiliares
-
    /**
-    * Varre todas as portas COM encontradas pelo PVI, e as fecha.
+    * @returns array de portas COM encontradas pelo PVI
     */
+   static getPortList() {
+      return DAQ.runInstructionS("serial.getportscsv", []).split(";")
+   }
+
    static closeAllPorts() {
-      let ports = DAQ.runInstructionS("serial.getportscsv", []).split(";")
+      let ports = SerialPVI.getPortList()
       ports.forEach(port => {
          console.log(`Fechando porta ${port}: `, pvi.runInstruction("serial.close", ['"' + port + '"']) == 1)
       })
@@ -259,6 +207,105 @@ class SerialPVI {
          console.error("Erro ao converter hexadecimal para binario")
       }
    }
+}
 
-   //#endregion Métodos Estáticos
+class SerialReqManager extends SerialPVI {
+
+   /**
+    * 
+    * @param {number} baud
+    * @param {number} parity Opcoes: 0, 1
+    * @param {string} policy Politica de gerenciamento, opcoes: "Queue" ou "Stack"
+    */
+   constructor(baud, parity, policy = "Queue") {
+      super(baud, parity)
+
+      this.Processing = true
+      this.ReqBuffer = []
+      this.ResBuffer = []
+
+      this.policyManagement = policy
+      this.ManagerInterval = 200
+
+      this.Manager()
+   }
+
+   Manager() {
+      if (this.hasReqToSend() && this.Processing) {
+
+         const nextReq = this.GetReq()
+
+         const { req } = nextReq
+         const { regex } = nextReq
+         const { timeOut = 500 } = nextReq
+         const { interval = 100 } = nextReq
+         const { timeOutRead = 50 } = nextReq
+
+         this.MatchData(req, regex, (sucess, res) => {
+
+            nextReq["res"] = res
+            nextReq["sucess"] = sucess
+
+            this.ResBuffer.push(nextReq)
+            this.Manager()
+
+         }, timeOut, interval, timeOutRead)
+
+      } else {
+         setTimeout(() => {
+            this.Manager()
+         }, this.ManagerInterval)
+      }
+   }
+
+   hasReqToSend() {
+      return this.ReqBuffer.length > 0
+   }
+
+   /**
+    * 
+    * @returns requisicao: object
+    * 
+    * Baseado na politica de gerenciamento: pilha, ou fila
+    */
+   GetReq() {
+      if (this.policyManagement == "Queue") {
+         return this.ReqBuffer.splice(0, 1)[0]
+      } else if (this.policyManagement == "Stack") {
+         return this.ReqBuffer.pop()
+      } else {
+         console.warn(`Invalid policy management assignment!\n\n
+         Allowed: 'Queue' and 'Stack'\n\n
+         Assigned: ${this.policyManagement}`)
+      }
+   }
+
+   /**
+    * Insere requisicao no buffer de requisicoes
+    * @param {object} reqObj
+    * @returns UniqueID: string
+    */
+   InsertReq(reqObj) {
+      reqObj["id"] = crypto.randomUUID()
+      this.ReqBuffer.push(reqObj)
+      return reqObj.id
+   }
+
+   /**
+    * Busca e remove do buffer de respostas uma resposta baseado no UUID
+    * @param {string} searchID 
+    * @returns resposta: object
+    */
+   SearchRes(searchID) {
+      let obj = null
+
+      this.ResBuffer.forEach((reqObj, pos) => {
+         const { id } = reqObj
+         if (id == searchID) {
+            obj = reqObj
+            const removeRes = this.ResBuffer.splice(pos, 1)
+         }
+      })
+      return obj
+   }
 }
