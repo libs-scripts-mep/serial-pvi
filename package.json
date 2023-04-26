@@ -1,6 +1,6 @@
 {
   "name": "@libs-scripts-mep/serial-pvi",
-  "version": "1.1.0",
+  "version": "1.4.0",
   "description": "Biblioteca que auxilia na manipulação de portas seriais através do PVI",
   "main": "serial-pvi.js",
   "scripts": {
