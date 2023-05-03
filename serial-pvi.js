@@ -28,7 +28,9 @@ class SerialPVI {
    async ReadData(timeOut = 50) {
       return new Promise((resolve) => {
          setTimeout(() => {
-            resolve(DAQ.runInstructionS("serial.readbytedata", [this.PORT]))
+            const response = DAQ.runInstructionS("serial.readbytedata", [this.PORT])
+            console.log(`%c${this.PORT} <= ${response}`, 'color: #CCEE55')
+            resolve(response)
          }, timeOut)
       })
    }
@@ -41,7 +43,7 @@ class SerialPVI {
       return new Promise((resolve) => {
 
          const monitor = setInterval(() => {
-            if (this.isOpen(port)) {
+            if (!this.isOpen(port)) {
 
                if (this.open(port)) {
                   clearInterval(monitor)
@@ -125,11 +127,11 @@ class SerialPVI {
     */
    async reqResMatchBytes(reqInfo) {
 
-      const { request } = reqInfo
       const { regex } = reqInfo
-      const { readTimeout } = reqInfo
-      const { maxTries = 3 } = reqInfo
+      const { request } = reqInfo
+      const { maxTries } = reqInfo
       const { tryNumber } = reqInfo
+      const { readTimeout } = reqInfo
 
       return new Promise(async (resolve) => {
 
@@ -293,9 +295,9 @@ class SerialPVIUtil {
       return new TextDecoder("ASCII", { NONSTANDARD_allowLegacyEncoding: true }).decode(bytes)
    }
 
-   static BinaryToHex(d) {
+   static BinaryToHex(bin) {
       try {
-         let hex = Number(parseInt(d, 2)).toString(16)
+         let hex = Number(parseInt(bin, 2)).toString(16)
          hex = hex.toUpperCase()
          while (hex.length < 4) {
             hex = "0" + hex
@@ -306,9 +308,9 @@ class SerialPVIUtil {
       }
    }
 
-   static DecimalToHex(d) {
+   static DecimalToHex(dec) {
       try {
-         let hex = Number(parseInt(d)).toString(16)
+         let hex = Number(parseInt(dec)).toString(16)
          hex = hex.toUpperCase()
          while (hex.length < 4) {
             hex = "0" + hex
@@ -319,13 +321,12 @@ class SerialPVIUtil {
       }
    }
 
-   static HextoDecimal(d) {
+   static HextoDecimal(hex) {
       try {
-         return Number.parseInt("0x" + d.replace(/[\t ]/g, ''))
+         return Number.parseInt("0x" + hex.replace(/[\t ]/g, ''))
       } catch (error) {
          console.error("Erro ao converter hexadecimal para decimal")
       }
-
    }
 
    static hex2bin(hex) {
