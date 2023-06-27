@@ -103,6 +103,8 @@ class SerialPVI {
                const result = await this.reqResMatchBytes(reqInfo)
                if (result.sucess) {
                   return { sucess: true, port: this.getPort() }
+               } else {
+                  this.close()
                }
 
             } else {
