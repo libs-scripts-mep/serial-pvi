@@ -109,7 +109,6 @@ class SerialPVI {
 
             } else {
                console.log(`%c${port} - Impossivel abrir porta`, `color: #EE0066`)
-               this.close()
             }
          }
 
