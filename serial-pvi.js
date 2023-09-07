@@ -36,6 +36,7 @@ class SerialPVI {
    }
 
    async SendBytes(data) {
+      console.log(`%c${this.PORT} => ${data}`, 'color: #00EE55')
       return DAQ.runInstructionS("serial.sendbyte", [this.PORT, data]) == 1
    }
 
@@ -59,28 +60,6 @@ class SerialPVI {
          }, timeout)
       })
    }
-
-   async tryToSendBytes(request, timeout = 200) {
-      return new Promise((resolve) => {
-
-         const monitor = setInterval(() => {
-            if (this.SendBytes(request)) {
-               console.log(`%c${this.PORT} => ${request}`, 'color: #00EE55')
-               clearInterval(monitor)
-               clearTimeout(timeOut)
-               resolve(true)
-            } else {
-               console.log(`%c${this.PORT} => ${request}`, 'color: #EE0055')
-            }
-         }, 20)
-
-         const timeOut = setTimeout(() => {
-            clearInterval(monitor)
-            resolve(false)
-         }, timeout)
-      })
-   }
-
 
    /**
     * 
@@ -139,7 +118,7 @@ class SerialPVI {
          let response = null
          let match = null
 
-         await this.tryToSendBytes(request)
+         this.SendBytes(request)
          response = await this.ReadData(readTimeout)
          match = response.match(regex)
 
@@ -246,7 +225,7 @@ class SerialReqManager extends SerialPVI {
       return obj
    }
 
-   async WatchForResponse(reqInfo, timeOut) {
+   async WatchForResponse(reqInfo) {
       return new Promise((resolve) => {
          const id = this.InsertReq(reqInfo)
 
@@ -254,15 +233,9 @@ class SerialReqManager extends SerialPVI {
             const obj = this.SearchRes(id)
             if (obj != null) {
                clearInterval(monitor)
-               clearTimeout(monitorTimeOut)
                resolve(obj)
             }
          }, 100)
-
-         const monitorTimeOut = setTimeout(() => {
-            clearInterval(monitor)
-            resolve(false)
-         }, timeOut)
       })
    }
 
