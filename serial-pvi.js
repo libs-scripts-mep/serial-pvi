@@ -202,6 +202,9 @@ class SerialReqManager extends SerialPVI {
     * @returns UniqueID: string
     */
    InsertReq(reqInfo) {
+      reqInfo.readTimeout ||= 100
+      reqInfo.tryNumber ||= 1
+      reqInfo.maxTries ||= 3
       reqInfo["id"] = crypto.randomUUID()
       this.ReqBuffer.push(reqInfo)
       return reqInfo.id
