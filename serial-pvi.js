@@ -168,7 +168,7 @@ export class SerialReqManager extends SerialPVI {
          const result = await this.reqResMatchBytes(nextReq)
 
          nextReq["matchResult"] = result.response
-         nextReq["response"] = result.response[0]
+         nextReq["response"] = result.response == null ? "" : result.response[0]
          nextReq["success"] = result.success
 
          this.ResBuffer.push(nextReq)
